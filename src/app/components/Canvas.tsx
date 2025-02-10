@@ -30,7 +30,6 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    // Initialize socket connection
     socketRef.current = io("ws://localhost:3001", {
       transports: ["websocket"],
       autoConnect: true,
@@ -46,6 +45,10 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
 
     socketRef.current.on("connect_error", (error) => {
       console.error("Connection error:", error)
+    })
+
+    socketRef.current.on("initialState", (initialPixels: PixelData[]) => {
+      setPixels(initialPixels)
     })
 
     socketRef.current.on("updatePixel", (pixelData: PixelData) => {

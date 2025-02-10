@@ -1,5 +1,9 @@
+import "dotenv/config"
+
 import { Server } from "socket.io"
 import { createServer } from "http"
+import { kv } from "@vercel/kv"
+import type { PixelData } from "./app/types/canvas"
 
 const httpServer = createServer()
 const io = new Server(httpServer, {
@@ -9,15 +13,27 @@ const io = new Server(httpServer, {
   },
 })
 
-io.on("connection", (socket) => {
+const CANVAS_KEY = "pixel_art_canvas"
+
+io.on("connection", async (socket) => {
   console.log("Client connected")
+
+  // Send initial canvas state to the client
+  const canvasState = (await kv.lrange<PixelData[]>(CANVAS_KEY, 0, 9999)) || []
+  socket.emit("initialState", canvasState)
 
   socket.on("joinRoom", (userId: string) => {
     socket.join(userId)
     console.log(`User ${userId} joined`)
   })
 
-  socket.on("pixelPlaced", (pixelData) => {
+  socket.on("pixelPlaced", async (pixelData: PixelData) => {
+    // Update the canvas state in Vercel KV
+    await kv.lpush(CANVAS_KEY, JSON.stringify(pixelData))
+    // Limit the stored pixels to the last 10000 (adjust as needed)
+    await kv.ltrim(CANVAS_KEY, 0, 9999)
+
+    // Broadcast the update to all clients
     socket.broadcast.emit("updatePixel", pixelData)
   })
 
