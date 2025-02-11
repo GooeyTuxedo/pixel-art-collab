@@ -27,7 +27,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [isPanning, setIsPanning] = useState(false)
+  const [isPanMode, setIsPanMode] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<Socket>(null)
@@ -102,21 +102,27 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   }, [drawCanvas])
 
   useEffect(() => {
-    if (cooldown > 0 || isPanning) {
+    if (cooldown > 0 || isPanMode) {
       const timer = setTimeout(() => setCooldown(cooldown - 1000), 1000)
       return () => clearTimeout(timer)
     }
   }, [cooldown])
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (cooldown > 0) return
+    if (cooldown > 0 || isPanMode) return
 
     const canvas = canvasRef.current
     if (!canvas) return
 
     const rect = canvas.getBoundingClientRect()
-    const x = Math.floor((event.clientX - rect.left - panOffset.x * zoom) / (pixelSize * zoom))
-    const y = Math.floor((event.clientY - rect.top - panOffset.y * zoom) / (pixelSize * zoom))
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    const clickX = (event.clientX - rect.left) * scaleX
+    const clickY = (event.clientY - rect.top) * scaleY
+
+    const x = Math.floor((clickX / zoom - panOffset.x) / pixelSize)
+    const y = Math.floor((clickY / zoom - panOffset.y) / pixelSize)
 
     if (x < 0 || x >= width || y < 0 || y >= height) return
 
@@ -131,7 +137,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
     if (event.touches.length === 1) {
       const touch = event.touches[0]
       setIsDragging(true)
-      setDragStart({ x: touch.clientX - panOffset.x * zoom, y: touch.clientY - panOffset.y * zoom })
+      setDragStart({ x: touch.clientX, y: touch.clientY })
     }
   }
 
@@ -150,17 +156,18 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   }
 
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isPanning) {
+    if (isPanMode) {
       setIsDragging(true)
-      setDragStart({ x: event.clientX - panOffset.x * zoom, y: event.clientY - panOffset.y * zoom })
+      setDragStart({ x: event.clientX, y: event.clientY })
     }
   }
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isDragging || isPanning) {
+    if (isDragging && isPanMode) {
       const dx = (event.clientX - dragStart.x) / zoom
       const dy = (event.clientY - dragStart.y) / zoom
-      setPanOffset({ x: dx, y: dy })
+      setPanOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+      setDragStart({ x: event.clientX, y: event.clientY })
       drawCanvas()
     }
   }
@@ -212,7 +219,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="border border-gray-300 cursor-move w-full h-auto max-w-full max-h-[70vh]"
+        className={`border border-gray-300 ${isPanMode ? "cursor-move" : "cursor-crosshair"} w-full h-auto max-w-full max-h-[70vh]`}
       />
       {cooldown > 0 && (
         <div className="absolute top-2 left-2 bg-white p-2 rounded shadow">Cooldown: {cooldown / 1000}s</div>
@@ -224,7 +231,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
         <Button onClick={() => handleZoom(-0.1)} size="icon">
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button onClick={() => setIsPanning(!isPanning)} size="icon" variant={isPanning ? "default" : "outline"}>
+        <Button onClick={() => setIsPanMode(!isPanMode)} size="icon" variant={isPanMode ? "default" : "outline"}>
           <Move className="h-4 w-4" />
         </Button>
         <Minimap
