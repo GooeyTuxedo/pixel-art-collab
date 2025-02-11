@@ -39,10 +39,10 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold mb-8">Pixel Art Collaborator</h1>
+    <main className="flex min-h-screen flex-col items-center p-4 sm:p-8">
+      <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8">Pixel Art Collaborator</h1>
       {userId && (
-        <>
+        <div className="w-full max-w-3xl">
           <Canvas width={50} height={50} pixelSize={10} userId={userId} selectedColor={selectedColor} />
           <div className="mt-4">
             <ColorPalette
@@ -52,7 +52,7 @@ export default function Home() {
               colorHistory={colorHistory}
             />
           </div>
-        </>
+        </div>
       )}
     </main>
   )

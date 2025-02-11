@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { PixelData } from "../types/canvas"
 import io, { type Socket } from "socket.io-client"
-import { ZoomIn, ZoomOut } from "lucide-react"
+import { ZoomIn, ZoomOut, Move } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Minimap from "./Minimap"
 
@@ -27,6 +27,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<Socket>(null)
@@ -101,7 +102,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   }, [drawCanvas])
 
   useEffect(() => {
-    if (cooldown > 0) {
+    if (cooldown > 0 || isPanning) {
       const timer = setTimeout(() => setCooldown(cooldown - 1000), 1000)
       return () => clearTimeout(timer)
     }
@@ -126,18 +127,42 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
     drawCanvas()
   }
 
+  const handleTouchStart = (event: React.TouchEvent<HTMLCanvasElement>) => {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0]
+      setIsDragging(true)
+      setDragStart({ x: touch.clientX - panOffset.x * zoom, y: touch.clientY - panOffset.y * zoom })
+    }
+  }
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLCanvasElement>) => {
+    if (isDragging && event.touches.length === 1) {
+      const touch = event.touches[0]
+      const dx = (touch.clientX - dragStart.x) / zoom
+      const dy = (touch.clientY - dragStart.y) / zoom
+      setPanOffset({ x: dx, y: dy })
+      drawCanvas()
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+  }
+
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDragging(true)
-    setDragStart({ x: event.clientX - panOffset.x * zoom, y: event.clientY - panOffset.y * zoom })
+    if (isPanning) {
+      setIsDragging(true)
+      setDragStart({ x: event.clientX - panOffset.x * zoom, y: event.clientY - panOffset.y * zoom })
+    }
   }
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return
-
-    const dx = (event.clientX - dragStart.x) / zoom
-    const dy = (event.clientY - dragStart.y) / zoom
-    setPanOffset({ x: dx, y: dy })
-    drawCanvas()
+    if (isDragging || isPanning) {
+      const dx = (event.clientX - dragStart.x) / zoom
+      const dy = (event.clientY - dragStart.y) / zoom
+      setPanOffset({ x: dx, y: dy })
+      drawCanvas()
+    }
   }
 
   const handleMouseUp = () => {
@@ -184,7 +209,10 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        className="border border-gray-300 cursor-move"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="border border-gray-300 cursor-move w-full h-auto max-w-full max-h-[70vh]"
       />
       {cooldown > 0 && (
         <div className="absolute top-2 left-2 bg-white p-2 rounded shadow">Cooldown: {cooldown / 1000}s</div>
@@ -195,6 +223,9 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
         </Button>
         <Button onClick={() => handleZoom(-0.1)} size="icon">
           <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button onClick={() => setIsPanning(!isPanning)} size="icon" variant={isPanning ? "default" : "outline"}>
+          <Move className="h-4 w-4" />
         </Button>
         <Minimap
           width={width}

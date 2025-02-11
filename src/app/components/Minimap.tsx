@@ -34,7 +34,7 @@ const Minimap: React.FC<MinimapProps> = ({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const scale = Math.min(100 / width, 100 / height)
+    const scale = Math.min(80 / width, 80 / height)
     canvas.width = width * scale
     canvas.height = height * scale
 
@@ -66,7 +66,7 @@ const Minimap: React.FC<MinimapProps> = ({
     if (!canvas) return
 
     const rect = canvas.getBoundingClientRect()
-    const scale = Math.min(100 / width, 100 / height)
+    const scale = Math.min(80 / width, 80 / height)
     const x = (event.clientX - rect.left) / scale
     const y = (event.clientY - rect.top) / scale
 
@@ -78,7 +78,7 @@ const Minimap: React.FC<MinimapProps> = ({
       ref={canvasRef}
       onClick={handleMinimapClick}
       className="border border-gray-300 cursor-pointer"
-      style={{ width: "100px", height: "100px" }}
+      style={{ width: "80px", height: "80px" }}
     />
   )
 }
