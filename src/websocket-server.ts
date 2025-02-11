@@ -37,6 +37,22 @@ io.on("connection", async (socket) => {
     socket.broadcast.emit("updatePixel", pixelData)
   })
 
+  socket.on("changeCanvasSize", async (width: number, height: number) => {
+    // Update canvas size in Vercel KV (you may want to store this separately)
+    await kv.set("canvas_size", JSON.stringify({ width, height }))
+
+    // Broadcast the canvas size change to all clients
+    io.emit("canvasSizeChanged", width, height)
+  })
+
+  socket.on("clearCanvas", async () => {
+    // Clear the canvas state in Vercel KV
+    await kv.del(CANVAS_KEY)
+
+    // Broadcast the canvas clear event to all clients
+    io.emit("canvasCleared")
+  })
+
   socket.on("disconnect", () => {
     console.log("Client disconnected")
   })

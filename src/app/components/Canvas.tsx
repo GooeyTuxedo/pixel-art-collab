@@ -14,13 +14,14 @@ interface CanvasProps {
   pixelSize: number
   userId: string
   selectedColor: string
+  onSizeChange: (width: number, height: number) => void
 }
 
 const COOLDOWN_TIME = 5000 // 5 seconds cooldown
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 5
 
-const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selectedColor }) => {
+const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selectedColor, onSizeChange }) => {
   const [pixels, setPixels] = useState<PixelData[]>([])
   const [cooldown, setCooldown] = useState(0)
   const [zoom, setZoom] = useState(1)
@@ -58,10 +59,20 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
       setPixels((prevPixels) => [...prevPixels, pixelData])
     })
 
+    socketRef.current.on("canvasSizeChanged", (newWidth: number, newHeight: number) => {
+      console.log("Canvas size changed:", newWidth, newHeight)
+      onSizeChange(newWidth, newHeight)
+    })
+
+    socketRef.current.on("canvasCleared", () => {
+      console.log("Canvas cleared")
+      setPixels([])
+    })
+
     return () => {
       socketRef.current?.disconnect()
     }
-  }, [userId])
+  }, [userId, onSizeChange])
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current

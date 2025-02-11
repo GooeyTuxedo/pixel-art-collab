@@ -11,6 +11,7 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run socket\""
   },
   "dependencies": {
+    "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.2",
     "@vercel/edge": "^1.2.1",
     "@vercel/kv": "^3.0.0",
