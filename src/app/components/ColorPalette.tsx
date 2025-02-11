@@ -9,7 +9,7 @@ interface ColorPaletteProps {
 
 const ColorPalette: React.FC<ColorPaletteProps> = ({ colors, onColorSelect }) => {
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-2 border-1 border-black">
       {colors.map((color) => (
         <button
           key={color}
