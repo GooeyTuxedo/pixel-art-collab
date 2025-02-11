@@ -9,6 +9,7 @@ const colors = ["#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF"
 export default function Home() {
   const [selectedColor, setSelectedColor] = useState(colors[0])
   const [userId, setUserId] = useState<string | null>(null)
+  const [colorHistory, setColorHistory] = useState<string[]>([])
 
   useEffect(() => {
     // Generate a random user ID if one doesn't exist
@@ -20,7 +21,22 @@ export default function Home() {
       sessionStorage.setItem("pixelArtUserId", newUserId)
       setUserId(newUserId)
     }
+
+    // Load color history from local storage
+    const storedColorHistory = localStorage.getItem("colorHistory")
+    if (storedColorHistory) {
+      setColorHistory(JSON.parse(storedColorHistory))
+    }
   }, [])
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color)
+
+    // Update color history
+    const updatedHistory = [color, ...colorHistory.filter((c) => c !== color)].slice(0, 10)
+    setColorHistory(updatedHistory)
+    localStorage.setItem("colorHistory", JSON.stringify(updatedHistory))
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
@@ -29,7 +45,12 @@ export default function Home() {
         <>
           <Canvas width={50} height={50} pixelSize={10} userId={userId} selectedColor={selectedColor} />
           <div className="mt-4">
-            <ColorPalette colors={colors} onColorSelect={setSelectedColor} />
+            <ColorPalette
+              colors={colors}
+              selectedColor={selectedColor}
+              onColorSelect={handleColorSelect}
+              colorHistory={colorHistory}
+            />
           </div>
         </>
       )}
