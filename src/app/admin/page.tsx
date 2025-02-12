@@ -9,6 +9,8 @@ export default function AdminPage() {
   const [canvasHeight, setCanvasHeight] = useState(50)
   const [socket, setSocket] = useState<Socket | null>(null)
 
+  console.log(`connecting to ws server: ${process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL}`)
+
   useEffect(() => {
     const newSocket = io(process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL, {
       transports: ["websocket"],
