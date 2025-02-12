@@ -14,6 +14,7 @@ const io = new Server(httpServer, {
 })
 
 const CANVAS_KEY = "pixel_art_canvas"
+const CANVAS_SIZE_KEY = "canvas_size"
 
 const updatePixelInList = (pixelList: PixelData[], newPixel: PixelData): PixelData[] => {
   const index = pixelList.findIndex((p) => p.x === newPixel.x && p.y === newPixel.y)
@@ -28,7 +29,7 @@ io.on("connection", async (socket) => {
   console.log("Client connected")
 
   // Send initial canvas state to the client
-  const canvasState = (await kv.lrange<PixelData[]>(CANVAS_KEY, 0, 9999)) || []
+  const canvasState = (await kv.get<PixelData[]>(CANVAS_KEY)) || []
   socket.emit("initialState", canvasState)
 
   socket.on("joinRoom", (userId: string) => {
@@ -48,7 +49,7 @@ io.on("connection", async (socket) => {
 
   socket.on("changeCanvasSize", async (width: number, height: number) => {
     // Update canvas size in Vercel KV (you may want to store this separately)
-    await kv.set("canvas_size", JSON.stringify({ width, height }))
+    await kv.set(CANVAS_SIZE_KEY, JSON.stringify({ width, height }))
 
     // Broadcast the canvas size change to all clients
     io.emit("canvasSizeChanged", width, height)

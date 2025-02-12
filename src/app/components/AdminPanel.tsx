@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { ChangeEvent, FormEvent, useState } from "react"
+import { ChangeEvent, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +16,11 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentWidth, currentHeight, onSizeChange, onClearCanvas }) => {
   const [newWidth, setNewWidth] = useState(currentWidth)
   const [newHeight, setNewHeight] = useState(currentHeight)
+
+  useEffect(() => {
+    setNewWidth(currentWidth)
+    setNewHeight(currentHeight)
+  }, [currentWidth, currentHeight])
 
   const handleSizeChange = () => {
     onSizeChange(newWidth, newHeight)

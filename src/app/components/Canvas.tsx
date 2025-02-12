@@ -8,22 +8,21 @@ import { ZoomIn, ZoomOut, Move } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Minimap from "./Minimap"
 
-const { NEXT_PUBLIC_WEBSOCKET_SERVER_URL } = process.env
-
 interface CanvasProps {
-  width: number
-  height: number
+  initialWidth: number
+  initialHeight: number
   pixelSize: number
   userId: string
   selectedColor: string
-  onSizeChange: (width: number, height: number) => void
 }
 
-const COOLDOWN_TIME = 5000 // 5 seconds cooldown
+const COOLDOWN_TIME = 1000 // 5 seconds cooldown
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 5
 
-const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selectedColor, onSizeChange }) => {
+const Canvas: React.FC<CanvasProps> = ({ initialWidth, initialHeight, pixelSize, userId, selectedColor }) => {
+  const [width, setWidth] = useState(initialWidth)
+  const [height, setHeight] = useState(initialHeight)
   const [pixels, setPixels] = useState<PixelData[]>([])
   const [cooldown, setCooldown] = useState(0)
   const [zoom, setZoom] = useState(1)
@@ -33,10 +32,10 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   const [isPanMode, setIsPanMode] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const socketRef = useRef<Socket>(null)
+  const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    socketRef.current = io(NEXT_PUBLIC_WEBSOCKET_SERVER_URL, {
+    socketRef.current = io(process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL, {
       transports: ["websocket"],
       autoConnect: true,
       reconnection: true,
@@ -62,19 +61,18 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
     })
 
     socketRef.current.on("canvasSizeChanged", (newWidth: number, newHeight: number) => {
-      console.log("Canvas size changed:", newWidth, newHeight)
-      onSizeChange(newWidth, newHeight)
+      setWidth(newWidth)
+      setHeight(newHeight)
     })
 
     socketRef.current.on("canvasCleared", () => {
-      console.log("Canvas cleared")
       setPixels([])
     })
 
     return () => {
       socketRef.current?.disconnect()
     }
-  }, [userId, onSizeChange])
+  }, [userId])
 
   const updatePixelInList = (pixelList: PixelData[], newPixel: PixelData): PixelData[] => {
     const index = pixelList.findIndex((p) => p.x === newPixel.x && p.y === newPixel.y)
@@ -124,14 +122,16 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   }, [drawCanvas])
 
   useEffect(() => {
-    if (cooldown > 0 || isPanMode) {
+    if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1000), 1000)
       return () => clearTimeout(timer)
     }
   }, [cooldown])
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (cooldown > 0 || isPanMode) return
+    if (cooldown > 0 || isPanMode) {
+      return
+    }
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -146,10 +146,18 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
     const x = Math.floor((clickX / zoom - panOffset.x) / pixelSize)
     const y = Math.floor((clickY / zoom - panOffset.y) / pixelSize)
 
-    if (x < 0 || x >= width || y < 0 || y >= height) return
+
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+      return
+    }
 
     const newPixel: PixelData = { x, y, color: selectedColor, userId }
-    setPixels((prevPixels) => [...prevPixels, newPixel])
+
+    setPixels((prevPixels) => {
+      const updatedPixels = updatePixelInList(prevPixels, newPixel)
+      return updatedPixels
+    })
+
     socketRef.current?.emit("pixelPlaced", newPixel)
     setCooldown(COOLDOWN_TIME)
     drawCanvas()
@@ -168,7 +176,8 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
       const touch = event.touches[0]
       const dx = (touch.clientX - dragStart.x) / zoom
       const dy = (touch.clientY - dragStart.y) / zoom
-      setPanOffset({ x: dx, y: dy })
+      setPanOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+      setDragStart({ x: touch.clientX, y: touch.clientY })
       drawCanvas()
     }
   }

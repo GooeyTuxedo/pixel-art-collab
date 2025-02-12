@@ -1,36 +1,74 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { io, type Socket } from "socket.io-client"
 import AdminPanel from "../components/AdminPanel"
 
 export default function AdminPage() {
   const [canvasWidth, setCanvasWidth] = useState(50)
   const [canvasHeight, setCanvasHeight] = useState(50)
+  const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
-    // Fetch current canvas size from the server
-    // This is a placeholder and should be replaced with actual API call
-    const fetchCanvasSize = async () => {
-      // const response = await fetch('/api/canvas-size');
-      // const { width, height } = await response.json();
-      // setCanvasWidth(width);
-      // setCanvasHeight(height);
+    const newSocket = io(process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL, {
+      transports: ["websocket"],
+    })
+
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket server")
+    })
+
+    newSocket.on("canvasSizeChanged", (width: number, height: number) => {
+      setCanvasWidth(width)
+      setCanvasHeight(height)
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
     }
+  }, [])
+
+  useEffect(() => {
+    const fetchCanvasSize = async () => {
+      try {
+        const response = await fetch("/api/canvas-size")
+        const { width, height } = await response.json()
+        setCanvasWidth(width)
+        setCanvasHeight(height)
+      } catch (error) {
+        console.error("Failed to fetch canvas size:", error)
+      }
+    }
+
     fetchCanvasSize()
   }, [])
 
-  const handleCanvasSizeChange = (width: number, height: number) => {
-    setCanvasWidth(width)
-    setCanvasHeight(height)
-    // Send canvas size change to the server
-    // This would typically be done through your WebSocket connection or API
-    console.log("Canvas size changed to", width, "x", height)
+  const handleCanvasSizeChange = async (width: number, height: number) => {
+    try {
+      const response = await fetch("/api/canvas-size", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ width, height }),
+      })
+
+      if (response.ok) {
+        setCanvasWidth(width)
+        setCanvasHeight(height)
+        socket?.emit("changeCanvasSize", width, height)
+      } else {
+        console.error("Failed to update canvas size")
+      }
+    } catch (error) {
+      console.error("Error updating canvas size:", error)
+    }
   }
 
   const handleClearCanvas = () => {
-    // Send clear canvas command to the server
-    // This would typically be done through your WebSocket connection or API
-    console.log("Canvas cleared")
+    socket?.emit("clearCanvas")
   }
 
   return (

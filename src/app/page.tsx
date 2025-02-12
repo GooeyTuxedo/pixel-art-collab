@@ -10,6 +10,8 @@ export default function Home() {
   const [selectedColor, setSelectedColor] = useState(colors[0])
   const [userId, setUserId] = useState<string | null>(null)
   const [colorHistory, setColorHistory] = useState<string[]>([])
+  const [canvasWidth, setCanvasWidth] = useState(50)
+  const [canvasHeight, setCanvasHeight] = useState(50)
 
   useEffect(() => {
     // Generate a random user ID if one doesn't exist
@@ -27,12 +29,23 @@ export default function Home() {
     if (storedColorHistory) {
       setColorHistory(JSON.parse(storedColorHistory))
     }
+
+    // Fetch initial canvas size
+    const fetchCanvasSize = async () => {
+      try {
+        const response = await fetch("/api/canvas-size")
+        const { width, height } = await response.json()
+        setCanvasWidth(width)
+        setCanvasHeight(height)
+      } catch (error) {
+        console.error("Failed to fetch canvas size:", error)
+      }
+    }
+    fetchCanvasSize()
   }, [])
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color)
-
-    // Update color history
     const updatedHistory = [color, ...colorHistory.filter((c) => c !== color)].slice(0, 10)
     setColorHistory(updatedHistory)
     localStorage.setItem("colorHistory", JSON.stringify(updatedHistory))
@@ -43,7 +56,13 @@ export default function Home() {
       <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8">Pixel Art Collaborator</h1>
       {userId && (
         <div className="w-full max-w-3xl">
-          <Canvas width={50} height={50} pixelSize={10} userId={userId} selectedColor={selectedColor} />
+          <Canvas
+            initialWidth={canvasWidth}
+            initialHeight={canvasHeight}
+            pixelSize={10}
+            userId={userId}
+            selectedColor={selectedColor}
+          />
           <div className="mt-4">
             <ColorPalette
               colors={colors}
@@ -57,4 +76,3 @@ export default function Home() {
     </main>
   )
 }
-
