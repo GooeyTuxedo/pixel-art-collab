@@ -8,6 +8,8 @@ import { ZoomIn, ZoomOut, Move } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Minimap from "./Minimap"
 
+const { NEXT_PUBLIC_WEBSOCKET_SERVER_URL } = process.env
+
 interface CanvasProps {
   width: number
   height: number
@@ -34,7 +36,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
   const socketRef = useRef<Socket>(null)
 
   useEffect(() => {
-    socketRef.current = io("ws://localhost:3001", {
+    socketRef.current = io(NEXT_PUBLIC_WEBSOCKET_SERVER_URL, {
       transports: ["websocket"],
       autoConnect: true,
       reconnection: true,
@@ -56,7 +58,7 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
     })
 
     socketRef.current.on("updatePixel", (pixelData: PixelData) => {
-      setPixels((prevPixels) => [...prevPixels, pixelData])
+      setPixels((prevPixels) => updatePixelInList(prevPixels, pixelData))
     })
 
     socketRef.current.on("canvasSizeChanged", (newWidth: number, newHeight: number) => {
@@ -73,6 +75,15 @@ const Canvas: React.FC<CanvasProps> = ({ width, height, pixelSize, userId, selec
       socketRef.current?.disconnect()
     }
   }, [userId, onSizeChange])
+
+  const updatePixelInList = (pixelList: PixelData[], newPixel: PixelData): PixelData[] => {
+    const index = pixelList.findIndex((p) => p.x === newPixel.x && p.y === newPixel.y)
+    if (index !== -1) {
+      return [...pixelList.slice(0, index), newPixel, ...pixelList.slice(index + 1)]
+    } else {
+      return [...pixelList, newPixel]
+    }
+  }
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current

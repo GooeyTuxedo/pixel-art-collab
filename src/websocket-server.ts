@@ -15,6 +15,15 @@ const io = new Server(httpServer, {
 
 const CANVAS_KEY = "pixel_art_canvas"
 
+const updatePixelInList = (pixelList: PixelData[], newPixel: PixelData): PixelData[] => {
+  const index = pixelList.findIndex((p) => p.x === newPixel.x && p.y === newPixel.y)
+  if (index !== -1) {
+    return [...pixelList.slice(0, index), newPixel, ...pixelList.slice(index + 1)]
+  } else {
+    return [...pixelList, newPixel]
+  }
+}
+
 io.on("connection", async (socket) => {
   console.log("Client connected")
 
@@ -29,9 +38,9 @@ io.on("connection", async (socket) => {
 
   socket.on("pixelPlaced", async (pixelData: PixelData) => {
     // Update the canvas state in Vercel KV
-    await kv.lpush(CANVAS_KEY, JSON.stringify(pixelData))
-    // Limit the stored pixels to the last 10000 (adjust as needed)
-    await kv.ltrim(CANVAS_KEY, 0, 9999)
+    const currentState = (await kv.get<PixelData[]>(CANVAS_KEY)) || []
+    const updatedState = updatePixelInList(currentState, pixelData)
+    await kv.set(CANVAS_KEY, JSON.stringify(updatedState))
 
     // Broadcast the update to all clients
     socket.broadcast.emit("updatePixel", pixelData)
